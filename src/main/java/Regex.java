@@ -29,13 +29,44 @@ public final class Regex {
 
   /** True if the pattern matches anywhere in {@code input}. */
   public boolean find(String input) {
-    for (int start = 0; start <= input.length(); start++) {
-      State st = new State(input, groupCount);
-      if (root.match(st, start, pos -> true)) {
-        return true;
+    return matchFrom(input, 0) != null;
+  }
+
+  /**
+   * Non-overlapping leftmost matches, scanning left to right (grep -o semantics).
+   * Each entry is {startInclusive, endExclusive}. Zero-length matches are skipped.
+   */
+  public List<int[]> allMatches(String input) {
+    List<int[]> result = new ArrayList<>();
+    int from = 0;
+    while (from <= input.length()) {
+      int[] m = matchFrom(input, from);
+      if (m == null) {
+        break;
+      }
+      if (m[1] > m[0]) {
+        result.add(m);
+        from = m[1];
+      } else {
+        from = m[0] + 1;
       }
     }
-    return false;
+    return result;
+  }
+
+  /** Leftmost match at or after {@code from}, or null. Returns {start, end}. */
+  private int[] matchFrom(String input, int from) {
+    for (int start = Math.max(from, 0); start <= input.length(); start++) {
+      State st = new State(input, groupCount);
+      int[] end = {-1};
+      if (root.match(st, start, pos -> {
+        end[0] = pos;
+        return true;
+      })) {
+        return new int[] {start, end[0]};
+      }
+    }
+    return null;
   }
 
   // --- matching machinery -------------------------------------------------
