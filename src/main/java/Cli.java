@@ -1,4 +1,6 @@
 import java.io.Console;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -50,8 +52,15 @@ record Cli(String pattern, List<String> paths, boolean recursive, boolean onlyMa
   }
 
   private static boolean stdoutIsTerminal() {
-    Console c = System.console();
-    return c != null && c.isTerminal();
+    // On Linux, fd 1 links to /dev/pts/N for a terminal, pipe:[...] otherwise.
+    // This is what we get under CodeCrafters (piped stdin, pty stdout).
+    try {
+      String fd1 = Files.readSymbolicLink(Path.of("/proc/self/fd/1")).toString();
+      return fd1.contains("/dev/pts/") || fd1.contains("/dev/tty");
+    } catch (Exception ignored) {
+      Console c = System.console();
+      return c != null && c.isTerminal();
+    }
   }
 
   private static void fail(String message) {
